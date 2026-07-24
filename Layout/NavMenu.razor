@@ -1,0 +1,30 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+@if (_open)
+{
+    <div class="nav-overlay" @onclick="Close"></div>
+}
+
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <span>&#9876;&#65039; Paint Inventory</span>
+        <button class="burger-btn" @onclick="Toggle" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+    <nav class="flex-column @(_open ? "nav-open" : "")">
+        <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="Close">Dashboard</NavLink>
+        <NavLink class="nav-link" href="all-paints" @onclick="Close">All Paints</NavLink>
+        <NavLink class="nav-link" href="by-rack" @onclick="Close">By Rack</NavLink>
+        <NavLink class="nav-link" href="wish-list" @onclick="Close">Wish List</NavLink>
+        <NavLink class="nav-link" href="guides" @onclick="Close">Guides</NavLink>
+        <NavLink class="nav-link" href="equivalents" @onclick="Close">Equivalents</NavLink>
+        <NavLink class="nav-link" href="settings" @onclick="Close">Settings</NavLink>
+    </nav>
+</div>
+
+@code {
+    bool _open;
+    void Toggle() => _open = !_open;
+    void Close() => _open = false;
+}

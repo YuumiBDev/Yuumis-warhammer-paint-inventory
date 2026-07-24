@@ -1,0 +1,160 @@
+@page "/settings"
+@inject InventoryManager Manager
+
+<PageTitle>Settings</PageTitle>
+
+@if (!_loaded)
+{
+    <div class="loading-msg">Loading inventory...</div>
+}
+else
+{
+    <div class="page-header">
+        <h1>SETTINGS</h1>
+    </div>
+
+    <h2 class="section-title">Paint Types</h2>
+    <p class="subtitle">Turn types on or off, and set the fill/display order. Disabling a type frees its rack slots — remaining types repack to fill the gap.</p>
+
+    <div class="settings-cat-list">
+        @for (int i = 0; i < _orderedSettings.Count; i++)
+        {
+            var setting = _orderedSettings[i];
+            var sample = new Paint { Category = setting.Category };
+            int index = i;
+            <div class="settings-cat-row @(setting.Enabled ? "" : "cat-disabled")">
+                <label class="cat-toggle">
+                    <input type="checkbox" checked="@setting.Enabled"
+                           @onchange="e => ToggleCategory(setting.Category, (bool)e.Value!)" />
+                </label>
+                <span class="cat-badge" style="background:@sample.CategoryCssColor; color:@sample.CategoryTextColor">@setting.Category</span>
+                <span class="settings-cat-order-btns">
+                    <button class="qty-btn" disabled="@(index == 0)" @onclick="() => MoveUp(index)">↑</button>
+                    <button class="qty-btn" disabled="@(index == _orderedSettings.Count - 1)" @onclick="() => MoveDown(index)">↓</button>
+                </span>
+            </div>
+        }
+    </div>
+
+    <h2 class="section-title">Rack Layout</h2>
+    <p class="subtitle">How your physical rack is laid out, and how many racks you actually have. Changing this repacks every paint's location.</p>
+
+    <div class="settings-data-section">
+        <div class="settings-data-group">
+            <span class="settings-data-label">Rows per rack</span>
+            <input class="rack-settings-input" type="number" min="1" @bind="_rackRows" />
+        </div>
+        <div class="settings-data-group">
+            <span class="settings-data-label">Columns per rack</span>
+            <input class="rack-settings-input" type="number" min="1" @bind="_rackColumns" />
+        </div>
+        <div class="settings-data-group">
+            <span class="settings-data-label">Racks I own</span>
+            <input class="rack-settings-input" type="number" min="0" placeholder="unset" @bind="_racksOwned" />
+        </div>
+        <button class="btn-copy btn-secondary" @onclick="SaveRackSettings">Save</button>
+        @if (_rackSettingsMessage is not null)
+        {
+            <span class="import-status">@_rackSettingsMessage</span>
+        }
+    </div>
+
+    <h2 class="section-title">Data</h2>
+
+    <div class="settings-data-section">
+        <div class="settings-data-group">
+            <span class="settings-data-label">Export</span>
+            <a class="btn-copy btn-secondary" href="@OwnedCsvHref" download="owned-paints.csv">Owned CSV</a>
+            <a class="btn-copy btn-secondary" href="@WishlistCsvHref" download="wishlist.csv">Wish List CSV</a>
+            <a class="btn-copy btn-secondary" href="@FullCsvHref" download="all-paints.csv">Full List CSV</a>
+        </div>
+
+        <div class="settings-data-group">
+            <span class="settings-data-label">Import Owned</span>
+            <InputFile OnChange="HandleImport" accept=".csv" />
+            @if (_importMessage is not null)
+            {
+                <span class="import-status">@_importMessage</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loaded;
+    private List<CategorySetting> _orderedSettings = [];
+    private string? _importMessage;
+
+    private int _rackRows;
+    private int _rackColumns;
+    private int? _racksOwned;
+    private string? _rackSettingsMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Manager.InitializeAsync();
+        RefreshSettings();
+        _rackRows = Manager.RackSettings.RowsPerRack;
+        _rackColumns = Manager.RackSettings.ColumnsPerRack;
+        _racksOwned = Manager.RackSettings.RacksOwned;
+        _loaded = true;
+    }
+
+    private async Task SaveRackSettings()
+    {
+        if (_rackRows < 1 || _rackColumns < 1)
+        {
+            _rackSettingsMessage = "Rows and columns must be at least 1.";
+            return;
+        }
+
+        var ok = await Manager.SetRackSettingsAsync(_rackRows, _rackColumns, _racksOwned);
+        _rackSettingsMessage = ok ? "Saved." : "Failed to save — try again.";
+    }
+
+    private void RefreshSettings() =>
+        _orderedSettings = Manager.CategorySettings.OrderBy(s => s.SortOrder).ToList();
+
+    private async Task ToggleCategory(PaintCategory category, bool enabled)
+    {
+        await Manager.SetCategoryEnabledAsync(category, enabled);
+        RefreshSettings();
+    }
+
+    private async Task MoveUp(int index)
+    {
+        if (index <= 0) return;
+        (_orderedSettings[index - 1], _orderedSettings[index]) = (_orderedSettings[index], _orderedSettings[index - 1]);
+        await Manager.SetCategoryOrderAsync(_orderedSettings.Select(s => s.Category).ToList());
+        RefreshSettings();
+    }
+
+    private async Task MoveDown(int index)
+    {
+        if (index >= _orderedSettings.Count - 1) return;
+        (_orderedSettings[index + 1], _orderedSettings[index]) = (_orderedSettings[index], _orderedSettings[index + 1]);
+        await Manager.SetCategoryOrderAsync(_orderedSettings.Select(s => s.Category).ToList());
+        RefreshSettings();
+    }
+
+    private string OwnedCsvHref =>
+        "data:text/csv;charset=utf-8," + Uri.EscapeDataString(Manager.GenerateOwnedCsv());
+
+    private string WishlistCsvHref =>
+        "data:text/csv;charset=utf-8," + Uri.EscapeDataString(Manager.GenerateWishlistCsv());
+
+    private string FullCsvHref =>
+        "data:text/csv;charset=utf-8," + Uri.EscapeDataString(Manager.GenerateFullCsv());
+
+    private async Task HandleImport(InputFileChangeEventArgs e)
+    {
+        _importMessage = "Importing...";
+        StateHasChanged();
+
+        using var reader = new StreamReader(e.File.OpenReadStream(maxAllowedSize: 1024 * 1024));
+        var content = await reader.ReadToEndAsync();
+
+        var (imported, skipped) = await Manager.ImportOwnedCsvAsync(content);
+        _importMessage = $"Imported {imported} paint(s)" + (skipped > 0 ? $", skipped {skipped} unrecognized name(s)." : ".");
+    }
+}

@@ -1,0 +1,111 @@
+@page "/wish-list"
+@inject InventoryManager Manager
+@inject IJSRuntime JS
+
+<PageTitle>Wish List</PageTitle>
+
+@if (!_loaded)
+{
+    <div class="loading-msg">Loading inventory...</div>
+}
+else
+{
+    <div class="page-header">
+        <h1>WISH LIST</h1>
+        <span class="subtitle">@_wishlist.Count paints wanted</span>
+    </div>
+
+    <div class="wish-actions">
+        <button class="btn-copy" @onclick="AddAllMissing">+ Add All Missing (@_missingNotWishlisted.Count)</button>
+        <a class="btn-copy btn-secondary" href="@_csvHref" download="wishlist.csv">Export CSV</a>
+        @if (_wishlist.Count > 0)
+        {
+            <button class="btn-copy" @onclick="CopyToClipboard">Copy to Clipboard</button>
+        }
+    </div>
+
+    @if (_wishlist.Count == 0)
+    {
+        <div class="all-owned-msg">Your wish list is empty. Add paints from All Paints, or click "Add All Missing" above.</div>
+    }
+    else
+    {
+        @foreach (var group in _wishlist.GroupBy(p => p.Category).OrderBy(g => g.Key))
+        {
+            var sample = new Paint { Category = group.Key };
+            <div class="wish-group">
+                <div class="wish-group-header">
+                    <span class="cat-badge" style="background:@sample.CategoryCssColor; color:@sample.CategoryTextColor">@group.Key</span>
+                    <span class="wish-count">@group.Count() paints</span>
+                </div>
+                <ul class="wish-list-items">
+                    @foreach (var p in group.OrderBy(p => p.DisplayName))
+                    {
+                        <li>
+                            @p.DisplayName
+                            <button class="wish-remove" @onclick="() => Remove(p)" title="Remove from wish list">✕</button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (_copied)
+        {
+            <div class="copy-confirm">Copied to clipboard!</div>
+        }
+    }
+}
+
+@code {
+    private bool _loaded;
+    private bool _copied;
+    private List<Paint> _wishlist = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Manager.InitializeAsync();
+        Refresh();
+        _loaded = true;
+    }
+
+    private void Refresh() => _wishlist = Manager.GetWishlist();
+
+    private List<Paint> _missingNotWishlisted =>
+        Manager.GetMissing().Where(p => !p.IsWishlisted).ToList();
+
+    private string _csvHref =>
+        "data:text/csv;charset=utf-8," + Uri.EscapeDataString(Manager.GenerateWishlistCsv());
+
+    private async Task AddAllMissing()
+    {
+        await Manager.AddAllMissingToWishlistAsync();
+        Refresh();
+    }
+
+    private async Task Remove(Paint paint)
+    {
+        await Manager.SetWishlistAsync(paint, false);
+        Refresh();
+    }
+
+    private async Task CopyToClipboard()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("WARHAMMER PAINT WISH LIST");
+        sb.AppendLine($"Total wanted: {_wishlist.Count}");
+
+        foreach (var group in _wishlist.GroupBy(p => p.Category).OrderBy(g => g.Key))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"=== {group.Key} ({group.Count()}) ===");
+            foreach (var p in group.OrderBy(p => p.DisplayName))
+                sb.AppendLine($"  - {p.DisplayName}");
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", sb.ToString());
+        _copied = true;
+        await Task.Delay(2000);
+        _copied = false;
+    }
+}

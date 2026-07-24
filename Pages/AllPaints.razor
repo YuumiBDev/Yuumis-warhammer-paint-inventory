@@ -1,0 +1,158 @@
+@page "/all-paints"
+@inject InventoryManager Manager
+
+<PageTitle>All Paints</PageTitle>
+
+@if (!_loaded)
+{
+    <div class="loading-msg">Loading inventory...</div>
+}
+else
+{
+    <div class="page-header">
+        <h1>ALL PAINTS</h1>
+    </div>
+
+    <div class="filters">
+        <input class="search-box" type="text" placeholder="Search paint name..."
+               @bind="_search" @bind:event="oninput" />
+
+        <div class="filter-tabs">
+            <button class="tab @(_view == "all" ? "active" : "")" @onclick='() => _view = "all"'>All (@Manager.Paints.Count)</button>
+            <button class="tab @(_view == "owned" ? "active" : "")" @onclick='() => _view = "owned"'>Owned (@Manager.GetOwned().Count)</button>
+            <button class="tab @(_view == "missing" ? "active" : "")" @onclick='() => _view = "missing"'>Missing (@Manager.GetMissing().Count)</button>
+        </div>
+
+        <div class="filter-tabs">
+            @foreach (var cat in OrderedCategories)
+            {
+                var active = _selectedCategories.Contains(cat);
+                var bg = active ? CatColor(cat) : "transparent";
+                var border = CatColor(cat);
+                var color = active ? CatTextColor(cat) : CatColor(cat);
+                <button class="tab" style="border-color:@border;background:@bg;color:@color"
+                        @onclick='() => ToggleCategory(cat)'>@cat</button>
+            }
+        </div>
+    </div>
+
+    <div class="paint-table">
+        <div class="paint-table-header">
+            <span>Owned</span>
+            <span>Category</span>
+            <span>Paint Name</span>
+            <span class="loc-full">Location</span>
+            <span class="loc-short">R:Rw:C</span>
+            <span>Qty</span>
+            <span>Wish</span>
+        </div>
+        @foreach (var p in FilteredPaints)
+        {
+            <div class="paint-row @(p.IsOwned ? "is-owned" : "")">
+                <span class="owned-toggle">
+                    <input type="checkbox" checked="@p.IsOwned"
+                           @onchange="e => ToggleOwned(p, (bool)e.Value!)" />
+                </span>
+                <span class="cat-badge" style="background:@p.CategoryCssColor; color:@p.CategoryTextColor">@p.Category</span>
+                <span class="paint-name">@p.DisplayName</span>
+                <span class="paint-location loc-full">@(p.RackNumber == 0 ? "Not racked" : $"R{p.RackNumber} Row {p.Row} Col {p.Column}")</span>
+                <span class="paint-location loc-short">@(p.RackNumber == 0 ? "—" : $"{p.RackNumber}:{p.Row}:{p.Column}")</span>
+                <span class="qty-stepper">
+                    <button class="qty-btn" disabled="@(p.Quantity <= 0)" @onclick="() => ChangeQuantity(p, p.Quantity - 1)">−</button>
+                    <input class="qty-input" type="number" min="0" value="@p.Quantity"
+                           @onchange="e => ChangeQuantity(p, ParseQty(e.Value))" />
+                    <button class="qty-btn" @onclick="() => ChangeQuantity(p, p.Quantity + 1)">+</button>
+                </span>
+                <span class="wish-toggle @(p.IsWishlisted ? "wish-active" : "")"
+                      @onclick="() => ToggleWishlist(p)" title="Add to wish list">
+                    @(p.IsWishlisted ? "★" : "☆")
+                </span>
+            </div>
+        }
+        @if (!FilteredPaints.Any())
+        {
+            <div class="empty-msg">No paints match your filters.</div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loaded;
+    private string _search = "";
+    private string _view = "all";
+    private HashSet<PaintCategory> _selectedCategories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Manager.InitializeAsync();
+        _loaded = true;
+    }
+
+    private IEnumerable<Paint> FilteredPaints
+    {
+        get
+        {
+            var paints = _view switch
+            {
+                "owned"   => Manager.GetOwned(),
+                "missing" => Manager.GetMissing(),
+                _         => Manager.Paints.ToList()
+            };
+
+            if (!string.IsNullOrWhiteSpace(_search))
+                paints = paints.Where(p => p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            if (_selectedCategories.Count > 0)
+                paints = paints.Where(p => _selectedCategories.Contains(p.Category)).ToList();
+
+            return paints;
+        }
+    }
+
+    private void ToggleCategory(PaintCategory cat)
+    {
+        if (!_selectedCategories.Remove(cat))
+            _selectedCategories.Add(cat);
+    }
+
+    private IEnumerable<PaintCategory> OrderedCategories =>
+        Manager.CategorySettings
+            .Where(s => s.Enabled)
+            .OrderBy(s => s.SortOrder)
+            .Select(s => s.Category);
+
+    private async Task ToggleOwned(Paint paint, bool value)
+    {
+        await Manager.SetOwnedAsync(paint, value);
+    }
+
+    private async Task ChangeQuantity(Paint paint, int quantity)
+    {
+        await Manager.SetQuantityAsync(paint, Math.Max(0, quantity));
+    }
+
+    private async Task ToggleWishlist(Paint paint)
+    {
+        await Manager.SetWishlistAsync(paint, !paint.IsWishlisted);
+    }
+
+    private static int ParseQty(object? value) =>
+        int.TryParse(value?.ToString(), out var q) ? q : 0;
+
+    private static string CatColor(PaintCategory cat) => cat switch
+    {
+        PaintCategory.Base      => "#e74c3c",
+        PaintCategory.Layer     => "#5dade2",
+        PaintCategory.Contrast  => "#a569bd",
+        PaintCategory.Dry       => "#f4d03f",
+        PaintCategory.Technical => "#48c9b0",
+        PaintCategory.Shade     => "#52be80",
+        _                       => "#aaaaaa"
+    };
+
+    private static string CatTextColor(PaintCategory cat) => cat switch
+    {
+        PaintCategory.Dry => "#1a1a1a",
+        _                 => "#ffffff"
+    };
+}

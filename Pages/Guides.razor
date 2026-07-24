@@ -1,0 +1,215 @@
+@page "/guides"
+@inject InventoryManager Manager
+
+<PageTitle>Paint Guides</PageTitle>
+
+@if (!_loaded)
+{
+    <div class="loading-msg">Loading inventory...</div>
+}
+else
+{
+    <div class="page-header">
+        <h1>PAINT GUIDES</h1>
+        <span class="subtitle">By Faction &amp; Unit</span>
+    </div>
+
+    <div class="guide-accordion category-accordion">
+        @foreach (var cat in _categories)
+        {
+            <div class="guide-accordion-item">
+                <button class="guide-accordion-header @(_expandedCategory == cat ? "open" : "")" @onclick="() => ToggleCategory(cat)">
+                    <span>@CategoryLabel(cat)</span>
+                    <span class="guide-accordion-caret">&#9662;</span>
+                </button>
+                <div class="guide-accordion-body-wrap @(_expandedCategory == cat ? "open" : "")">
+                    <div class="guide-accordion-body">
+                        @if (cat == GuideCategory.General)
+                        {
+                            <div class="guide-accordion">
+                                @foreach (var g in _generalGuides)
+                                {
+                                    <div class="guide-accordion-item">
+                                        <button class="guide-accordion-header @(_expandedGuide == g.Title ? "open" : "")" @onclick="() => ToggleGuide(g.Title)">
+                                            <span>@g.Title</span>
+                                            <span class="guide-accordion-caret">&#9662;</span>
+                                        </button>
+                                        <div class="guide-accordion-body-wrap @(_expandedGuide == g.Title ? "open" : "")">
+                                            <div class="guide-accordion-body">
+                                                @foreach (var block in g.Blocks)
+                                                {
+                                                    if (block.Kind == BlockKind.H1)
+                                                    {
+                                                        <div class="guide-block-h1">@block.Text</div>
+                                                    }
+                                                    else if (block.Kind == BlockKind.H2)
+                                                    {
+                                                        <div class="guide-block-h2">@block.Text</div>
+                                                    }
+                                                    else if (block.Kind == BlockKind.Text)
+                                                    {
+                                                        <p class="guide-block-text">@block.Text</p>
+                                                    }
+                                                    else if (block.Kind == BlockKind.Bullets)
+                                                    {
+                                                        <ul class="guide-block-bullets">
+                                                            @foreach (var item in block.Items!)
+                                                            {
+                                                                <li>@item</li>
+                                                            }
+                                                        </ul>
+                                                    }
+                                                    else if (block.Kind == BlockKind.Table)
+                                                    {
+                                                        <table class="guide-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    @foreach (var h in block.TableHeader!)
+                                                                    {
+                                                                        <th>@h</th>
+                                                                    }
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach (var row in block.TableRows!)
+                                                                {
+                                                                    <tr>
+                                                                        @foreach (var cell in row)
+                                                                        {
+                                                                            <td>@cell</td>
+                                                                        }
+                                                                    </tr>
+                                                                }
+                                                            </tbody>
+                                                        </table>
+                                                    }
+                                                    else if (block.Kind == BlockKind.Links)
+                                                    {
+                                                        <div class="guide-links">
+                                                            <span>Sources:</span>
+                                                            @foreach (var link in block.Links!)
+                                                            {
+                                                                <a href="@link.Url" target="_blank" rel="noopener">@link.Label</a>
+                                                            }
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rack-tabs guide-tabs scroll-tabs">
+                                @foreach (var f in _factionsByCategory[cat])
+                                {
+                                    <button class="tab @(_faction == f ? "active" : "")" @onclick="() => SelectFaction(f)">@f.Name</button>
+                                }
+                            </div>
+
+                            @if (CategoryOf(_faction) == cat)
+                            {
+                                var schemeOptions = _faction.Units.Where(u => u.IsScheme).ToList();
+                                var unitOptions = _faction.Units.Where(u => !u.IsScheme).ToList();
+
+                                @if (schemeOptions.Count > 1)
+                                {
+                                    <label class="unit-select-label">Colour Scheme</label>
+                                    <select class="unit-select" value="@_scheme.Name" @onchange="OnSchemeSelected">
+                                        @foreach (var s in schemeOptions)
+                                        {
+                                            <option value="@s.Name">@s.Name</option>
+                                        }
+                                    </select>
+                                }
+
+                                <label class="unit-select-label">Unit</label>
+                                <div class="unit-select-row">
+                                    <select class="unit-select" value="@_selectedUnit.Name" @onchange="OnUnitSelected">
+                                        @foreach (var u in unitOptions)
+                                        {
+                                            <option value="@u.Name">@u.Name</option>
+                                        }
+                                    </select>
+                                    <a class="unit-gw-link"
+                                       href="@($"https://www.warhammer.com/en-GB/plp?search={Uri.EscapeDataString(_selectedUnit.Name)}")"
+                                       target="_blank" rel="noopener">
+                                        Find on Warhammer.com &#8599;
+                                    </a>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(_selectedUnit.ImageUrl))
+                                {
+                                    <div class="unit-visual-section">
+                                        <label class="unit-select-label">Visual Reference</label>
+                                        <div class="unit-visual">
+                                            <img src="@_selectedUnit.ImageUrl" alt="@_selectedUnit.Name" class="unit-image" />
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (_scheme.Intro is not null)
+                                {
+                                    <p class="subtitle" style="display:block;margin:0.5rem 0 1rem;">@_scheme.Intro</p>
+                                }
+
+                                @foreach (var section in _scheme.Sections.Concat(_selectedUnit.Sections))
+                                {
+                                    <h2>@section.Title</h2>
+                                    <div class="guide-steps">
+                                        @foreach (var step in section.Steps)
+                                        {
+                                            var owned = IsOwned(step.Paint);
+                                            <div class="guide-step">
+                                                <span class="guide-step-label">@step.Label</span>
+                                                <span class="guide-step-paint">@step.Paint</span>
+                                                <span class="@(owned ? "owned-badge" : "missing-badge")">@(owned ? "Owned" : "Missing")</span>
+                                                @if (!string.IsNullOrEmpty(step.Note))
+                                                {
+                                                    <span class="guide-step-note">@step.Note</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                @if (_faction.Sources is { Count: > 0 })
+                                {
+                                    <h2>Verified External Sources</h2>
+                                    <p class="subtitle" style="display:block;margin-bottom:1rem;">
+                                        Official and community full-army painting guides for @_faction.Name.
+                                    </p>
+
+                                    @foreach (var group in _faction.Sources)
+                                    {
+                                        <div class="source-group">
+                                            <div class="source-group-title">@group.Title</div>
+                                            <ul class="source-list">
+                                                @foreach (var src in group.Sources)
+                                                {
+                                                    <li>
+                                                        @if (src.Url is not null)
+                                                        {
+                                                            <a href="@src.Url" target="_blank" rel="noopener">@src.Name</a>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>@src.Name</span>
+                                                        }
+                                                        <span class="source-desc"> — @src.Description</span>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                }
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

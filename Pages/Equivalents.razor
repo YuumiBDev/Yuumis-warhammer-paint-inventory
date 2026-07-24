@@ -1,0 +1,202 @@
+@page "/equivalents"
+@inject InventoryManager Manager
+
+<PageTitle>3rd-Party Equivalents</PageTitle>
+
+@if (!_loaded)
+{
+    <div class="loading-msg">Loading...</div>
+}
+else
+{
+    <div class="page-header">
+        <h1>3RD-PARTY EQUIVALENTS</h1>
+        <span class="subtitle">Community-sourced, not official — add or remove to correct or extend</span>
+    </div>
+
+    <div class="filters">
+        <input class="search-box" type="text" placeholder="Search paint name..."
+               @bind="_search" @bind:event="oninput" />
+        <select class="cat-select" @bind="_brandFilter">
+            <option value="">All brands</option>
+            @foreach (var brand in AllKnownBrands())
+            {
+                <option value="@brand">@brand</option>
+            }
+        </select>
+        <label class="equiv-filter-toggle">
+            <input type="checkbox" @bind="_onlyWithEquivalents" />
+            With equivalents only
+        </label>
+    </div>
+
+    <div class="equiv-list">
+        @foreach (var p in FilteredPaints)
+        {
+            <div class="equiv-card">
+                <div class="equiv-card-header">
+                    <span class="cat-badge" style="background:@p.CategoryCssColor; color:@p.CategoryTextColor">@p.Category</span>
+                    <span class="paint-name">@p.DisplayName</span>
+                </div>
+                @foreach (var brand in BrandsFor(p.Id).Where(b => string.IsNullOrEmpty(_brandFilter) || b == _brandFilter))
+                {
+                    <div class="equiv-brand-row">
+                        <span class="equiv-brand-label">@brand</span>
+                        <div class="equiv-chips">
+                            @if (_equivalents.TryGetValue(p.Id, out var list))
+                            {
+                                @foreach (var e in list.Where(e => e.Brand == brand))
+                                {
+                                    <span class="equiv-chip">
+                                        @e.EquivalentName
+                                        <button class="equiv-remove" @onclick="() => Remove(p.Id, e)" title="Remove">✕</button>
+                                    </span>
+                                }
+                            }
+                            <input class="equiv-add-input" placeholder="+ add..."
+                                   value="@GetDraft(p.Id, brand)"
+                                   @onchange='e => SetDraft(p.Id, brand, e.Value?.ToString() ?? "")'
+                                   @onkeydown="e => OnKeyDown(e, p.Id, brand)" />
+                            <button class="equiv-add-btn" @onclick="() => Add(p.Id, brand)">+</button>
+                        </div>
+                    </div>
+                }
+                <div class="equiv-brand-row equiv-other-row">
+                    <input class="equiv-other-brand-input" placeholder="Other brand..."
+                           value="@GetOtherBrandDraft(p.Id)"
+                           @onchange='e => _otherBrandDrafts[p.Id] = e.Value?.ToString() ?? ""' />
+                    <div class="equiv-chips">
+                        <input class="equiv-add-input" placeholder="+ add..."
+                               value="@GetOtherNameDraft(p.Id)"
+                               @onchange='e => _otherNameDrafts[p.Id] = e.Value?.ToString() ?? ""'
+                               @onkeydown="e => OnOtherKeyDown(e, p.Id)" />
+                        <button class="equiv-add-btn" @onclick="() => AddOther(p.Id)">+</button>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (!FilteredPaints.Any())
+        {
+            <div class="empty-msg">No paints match your search.</div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly string[] Brands = ["Vallejo", "Army Painter", "AK Interactive", "P3 Formula"];
+
+    private bool _loaded;
+    private string _search = "";
+    private bool _onlyWithEquivalents;
+    private string _brandFilter = "";
+    private Dictionary<long, List<PaintEquivalent>> _equivalents = [];
+    private Dictionary<(long PaintId, string Brand), string> _drafts = [];
+    private Dictionary<long, string> _otherBrandDrafts = [];
+    private Dictionary<long, string> _otherNameDrafts = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Manager.InitializeAsync();
+        _equivalents = await Manager.LoadEquivalentsAsync();
+        _loaded = true;
+    }
+
+    private IEnumerable<Paint> FilteredPaints
+    {
+        get
+        {
+            var paints = Manager.Paints.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_search))
+                paints = paints.Where(p => p.DisplayName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(_brandFilter))
+                paints = paints.Where(p => _equivalents.TryGetValue(p.Id, out var list) && list.Any(e => e.Brand == _brandFilter));
+            else if (_onlyWithEquivalents)
+                paints = paints.Where(p => _equivalents.TryGetValue(p.Id, out var list) && list.Count > 0);
+            return paints;
+        }
+    }
+
+    // Presets first, then any custom brand names already saved for this paint
+    // (e.g. added via the "Other brand" row) that aren't already one of the presets.
+    private IEnumerable<string> BrandsFor(long paintId)
+    {
+        if (!_equivalents.TryGetValue(paintId, out var list)) return Brands;
+        var customBrands = list.Select(e => e.Brand).Where(b => !Brands.Contains(b)).Distinct().OrderBy(b => b);
+        return Brands.Concat(customBrands);
+    }
+
+    // All preset brands plus every custom brand name that's been saved anywhere,
+    // for populating the brand filter dropdown.
+    private IEnumerable<string> AllKnownBrands()
+    {
+        var customBrands = _equivalents.Values.SelectMany(l => l).Select(e => e.Brand)
+            .Where(b => !Brands.Contains(b)).Distinct().OrderBy(b => b);
+        return Brands.Concat(customBrands);
+    }
+
+    private string GetOtherBrandDraft(long paintId) =>
+        _otherBrandDrafts.TryGetValue(paintId, out var v) ? v : "";
+
+    private string GetOtherNameDraft(long paintId) =>
+        _otherNameDrafts.TryGetValue(paintId, out var v) ? v : "";
+
+    private async Task OnOtherKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, long paintId)
+    {
+        if (e.Key == "Enter") await AddOther(paintId);
+    }
+
+    private async Task AddOther(long paintId)
+    {
+        var brand = GetOtherBrandDraft(paintId).Trim();
+        var value = GetOtherNameDraft(paintId).Trim();
+        if (brand.Length == 0 || value.Length == 0) return;
+
+        var created = await Manager.AddEquivalentAsync(paintId, brand, value);
+        if (created == null) return;
+
+        if (!_equivalents.TryGetValue(paintId, out var list))
+        {
+            list = [];
+            _equivalents[paintId] = list;
+        }
+        if (list.All(e => e.Id != created.Id)) list.Add(created);
+        _otherNameDrafts[paintId] = "";
+    }
+
+    private string GetDraft(long paintId, string brand) =>
+        _drafts.TryGetValue((paintId, brand), out var v) ? v : "";
+
+    private void SetDraft(long paintId, string brand, string value) =>
+        _drafts[(paintId, brand)] = value;
+
+    private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, long paintId, string brand)
+    {
+        if (e.Key == "Enter") await Add(paintId, brand);
+    }
+
+    private async Task Add(long paintId, string brand)
+    {
+        var value = GetDraft(paintId, brand).Trim();
+        if (value.Length == 0) return;
+
+        var created = await Manager.AddEquivalentAsync(paintId, brand, value);
+        if (created == null) return;
+
+        if (!_equivalents.TryGetValue(paintId, out var list))
+        {
+            list = [];
+            _equivalents[paintId] = list;
+        }
+        // The DB upserts on (paint_id, brand, equivalent_name), so re-adding an
+        // existing value returns the same row rather than erroring — don't show it twice.
+        if (list.All(e => e.Id != created.Id)) list.Add(created);
+        _drafts[(paintId, brand)] = "";
+    }
+
+    private async Task Remove(long paintId, PaintEquivalent equivalent)
+    {
+        if (!await Manager.DeleteEquivalentAsync(equivalent.Id)) return;
+        if (_equivalents.TryGetValue(paintId, out var list))
+            list.Remove(equivalent);
+    }
+}
