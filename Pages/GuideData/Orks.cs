@@ -226,5 +226,5 @@ public partial class Guides
 
         PlainUnit(OrksOverall, "Big'ed Bossbunka"),
         PlainUnit(OrksOverall, "Mekboy Workshop"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

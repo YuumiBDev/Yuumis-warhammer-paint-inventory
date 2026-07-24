@@ -41,9 +41,16 @@ else
                 <ul class="wish-list-items">
                     @foreach (var p in group.OrderBy(p => p.DisplayName))
                     {
+                        var usedIn = Guides.WhereUsed(p.Name);
                         <li>
-                            @p.DisplayName
-                            <button class="wish-remove" @onclick="() => Remove(p)" title="Remove from wish list">✕</button>
+                            <div class="wish-item-row">
+                                <span>@p.DisplayName</span>
+                                <button class="wish-remove" @onclick="() => Remove(p)" title="Remove from wish list">✕</button>
+                            </div>
+                            @if (usedIn.Count > 0)
+                            {
+                                <div class="wish-used-in">Used in: @string.Join(", ", usedIn.Take(3).Select(u => $"{u.FactionName} — {u.UnitName}"))@(usedIn.Count > 3 ? $" +{usedIn.Count - 3} more" : "")</div>
+                            }
                         </li>
                     }
                 </ul>

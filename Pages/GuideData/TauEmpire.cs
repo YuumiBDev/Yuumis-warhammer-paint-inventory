@@ -79,5 +79,5 @@ public partial class Guides
         PlainUnit(TauEmpireOverall, "Tidewall Shieldline"),
 
         PlainUnit(TauEmpireOverall, "Devilfish"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

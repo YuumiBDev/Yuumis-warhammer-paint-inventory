@@ -6,12 +6,14 @@ public partial class Guides
 {
     private bool _loaded;
 
-    private record Step(string Label, string Paint, string? Note = null);
-    private record Section(string Title, List<Step> Steps);
-    private record UnitGuide(string Name, string? Intro, List<Section> Sections, string? ImageUrl = null, bool IsScheme = false);
-    private record Source(string Name, string Description, string? Url);
-    private record SourceGroup(string Title, List<Source> Sources);
-    private record FactionGuide(string Name, List<UnitGuide> Units, List<SourceGroup>? Sources = null);
+    // internal (not private): the paint cross-reference index on other pages
+    // (AllPaints/ByRack/WishList) reads these directly via Guides.PaintUsageIndex.
+    internal record Step(string Label, string Paint, string? Note = null);
+    internal record Section(string Title, List<Step> Steps);
+    internal record UnitGuide(string Name, string? Intro, List<Section> Sections, string? ImageUrl = null, bool IsScheme = false);
+    internal record Source(string Name, string Description, string? Url);
+    internal record SourceGroup(string Title, List<Source> Sources);
+    internal record FactionGuide(string Name, List<UnitGuide> Units, GuideCategory Category = GuideCategory.Imperial, Game Game = Game.Warhammer40K, List<SourceGroup>? Sources = null);
 
     private FactionGuide _faction = null!;
     private UnitGuide _scheme = null!;
@@ -36,6 +38,38 @@ public partial class Guides
         if (match is not null) _selectedUnit = match;
     }
 
+    // ---- General guides (Skin Tone, Rocks/Walls/Buildings) — not tied to any one
+    // game, so they render as their own section above the Game picker, with their
+    // own independent picker state (kept separate so it doesn't fight over shared
+    // state with whichever game/category is also expanded at the same time).
+    private bool _generalExpanded;
+    private FactionGuide _generalFaction = null!;
+    private UnitGuide _generalScheme = null!;
+    private UnitGuide _generalSelectedUnit = null!;
+
+    private void ToggleGeneral() => _generalExpanded = !_generalExpanded;
+
+    private void SelectGeneralFaction(FactionGuide f)
+    {
+        _generalFaction = f;
+        _generalScheme = f.Units.First(u => u.IsScheme);
+        _generalSelectedUnit = f.Units.First(u => !u.IsScheme);
+    }
+
+    private void OnGeneralSchemeSelected(ChangeEventArgs e)
+    {
+        var match = _generalFaction.Units.FirstOrDefault(u => u.IsScheme && u.Name == e.Value?.ToString());
+        if (match is not null) _generalScheme = match;
+    }
+
+    private void OnGeneralUnitSelected(ChangeEventArgs e)
+    {
+        var match = _generalFaction.Units.FirstOrDefault(u => !u.IsScheme && u.Name == e.Value?.ToString());
+        if (match is not null) _generalSelectedUnit = match;
+    }
+
+    private List<FactionGuide> GeneralFactions => _factions.Where(f => f.Category == GuideCategory.General).ToList();
+
     // Every non-"Overall" unit is rendered on top of whichever Colour Scheme is
     // currently selected, plus this short block of unit-specific gear/iconography callouts.
     private static UnitGuide FactionUnit(List<Section> overall, string name, string extraTitle, List<Step> extraSteps) =>
@@ -46,43 +80,63 @@ public partial class Guides
     private static UnitGuide PlainUnit(List<Section> overall, string name) =>
         new(name, null, []);
 
-    // ---- General (non-faction-tab) guides — accordion below the faction picker ----
-    private enum BlockKind { H1, H2, Text, Bullets, Table, Links }
+    // ---- Top-level games, each with its own set of categories that roll down to factions ----
+    internal enum Game
+    {
+        Warhammer40K, AgeOfSigmar, KillTeam, Necromunda,
+        HorusHeresy, AdeptusTitanicus, LegionsImperialis,
+        OldWorld, MiddleEarth, Warcry, WarhammerUnderworlds, WarhammerQuestDarkwater,
+        BloodBowl,
+    }
 
-    private record GuideBlock(
-        BlockKind Kind,
-        string? Text = null,
-        List<string>? Items = null,
-        string[]? TableHeader = null,
-        List<string[]>? TableRows = null,
-        List<(string Label, string Url)>? Links = null);
+    internal enum GuideCategory { General, Imperial, Chaos, Xenos, Order, Death, Destruction, Gangs, Loyalist, Traitor, Good, Evil, Teams, All }
 
-    private record GeneralGuide(string Title, List<GuideBlock> Blocks);
+    private static readonly Game[] _games =
+    [
+        Game.Warhammer40K, Game.AgeOfSigmar, Game.KillTeam, Game.Necromunda,
+        Game.HorusHeresy, Game.AdeptusTitanicus, Game.LegionsImperialis,
+        Game.OldWorld, Game.MiddleEarth, Game.Warcry, Game.WarhammerUnderworlds, Game.WarhammerQuestDarkwater,
+        Game.BloodBowl,
+    ];
 
-    private string? _expandedGuide;
+    // General isn't listed per-game — it's the same guides regardless of game,
+    // rendered as its own section above the Game picker (see _generalFaction etc.)
+    private static readonly Dictionary<Game, GuideCategory[]> _categoriesByGame = new()
+    {
+        [Game.Warhammer40K] = [GuideCategory.Imperial, GuideCategory.Chaos, GuideCategory.Xenos],
+        [Game.AgeOfSigmar] = [GuideCategory.Order, GuideCategory.Chaos, GuideCategory.Death, GuideCategory.Destruction],
+        [Game.KillTeam] = [GuideCategory.Imperial, GuideCategory.Chaos, GuideCategory.Xenos],
+        [Game.Necromunda] = [GuideCategory.Gangs],
+        [Game.HorusHeresy] = [GuideCategory.Loyalist, GuideCategory.Traitor],
+        [Game.AdeptusTitanicus] = [GuideCategory.Loyalist, GuideCategory.Traitor],
+        [Game.LegionsImperialis] = [GuideCategory.Loyalist, GuideCategory.Traitor],
+        [Game.OldWorld] = [GuideCategory.All],
+        [Game.MiddleEarth] = [GuideCategory.Good, GuideCategory.Evil],
+        [Game.Warcry] = [GuideCategory.All],
+        [Game.WarhammerUnderworlds] = [GuideCategory.All],
+        [Game.WarhammerQuestDarkwater] = [GuideCategory.All],
+        [Game.BloodBowl] = [GuideCategory.Teams],
+    };
 
-    private void ToggleGuide(string title) =>
-        _expandedGuide = _expandedGuide == title ? null : title;
+    internal static string GameLabel(Game g) => g switch
+    {
+        Game.Warhammer40K => "Warhammer 40,000",
+        Game.AgeOfSigmar => "Age of Sigmar",
+        Game.KillTeam => "Kill Team",
+        Game.Necromunda => "Necromunda",
+        Game.HorusHeresy => "The Horus Heresy",
+        Game.AdeptusTitanicus => "Adeptus Titanicus",
+        Game.LegionsImperialis => "Legions Imperialis",
+        Game.OldWorld => "The Old World",
+        Game.MiddleEarth => "Middle-earth",
+        Game.Warcry => "Warcry",
+        Game.WarhammerUnderworlds => "Warhammer Underworlds",
+        Game.WarhammerQuestDarkwater => "Warhammer Quest: Darkwater",
+        Game.BloodBowl => "Blood Bowl",
+        _ => g.ToString(),
+    };
 
-    private readonly List<GeneralGuide> _generalGuides =
-        [SkinToneGuide(), NightbringerGuide(), RocksWallsBuildingsGuide()];
-
-    // ---- Top-row categories: General / Imperial / Chaos / Xenos — each rolls down to its factions ----
-    private enum GuideCategory { General, Imperial, Chaos, Xenos }
-
-    private static readonly GuideCategory[] _categories =
-        [GuideCategory.General, GuideCategory.Imperial, GuideCategory.Chaos, GuideCategory.Xenos];
-
-    private static readonly HashSet<string> ChaosFactionNames =
-        ["Chaos Space Marines", "Death Guard", "Thousand Sons", "World Eaters", "Chaos Daemons", "Chaos Knights"];
-
-    private static readonly HashSet<string> XenosFactionNames =
-        ["Necrons", "Orks", "Tyranids", "Genestealer Cults", "Leagues of Votann", "Aeldari", "Drukhari", "T'au Empire"];
-
-    private static GuideCategory CategoryOf(FactionGuide f) =>
-        ChaosFactionNames.Contains(f.Name) ? GuideCategory.Chaos :
-        XenosFactionNames.Contains(f.Name) ? GuideCategory.Xenos :
-        GuideCategory.Imperial;
+    private static GuideCategory CategoryOf(FactionGuide f) => f.Category;
 
     private static string CategoryLabel(GuideCategory cat) => cat switch
     {
@@ -90,10 +144,39 @@ public partial class Guides
         GuideCategory.Imperial => "Imperial",
         GuideCategory.Chaos => "Chaos",
         GuideCategory.Xenos => "Xenos",
+        GuideCategory.Order => "Order",
+        GuideCategory.Death => "Death",
+        GuideCategory.Destruction => "Destruction",
+        GuideCategory.Gangs => "Gangs",
+        GuideCategory.Loyalist => "Loyalist",
+        GuideCategory.Traitor => "Traitor",
+        GuideCategory.Good => "Good",
+        GuideCategory.Evil => "Evil",
+        GuideCategory.Teams => "Teams",
+        GuideCategory.All => "All",
         _ => cat.ToString(),
     };
 
+    private Game _selectedGame = Game.Warhammer40K;
     private GuideCategory? _expandedCategory = GuideCategory.Imperial;
+
+    private List<FactionGuide> FactionsIn(Game g, GuideCategory cat) =>
+        _factionsByGameAndCategory.TryGetValue(g, out var byCat) && byCat.TryGetValue(cat, out var list)
+            ? list
+            : [];
+
+    private void SelectGame(Game g)
+    {
+        _selectedGame = g;
+        var categories = _categoriesByGame[g];
+        // Pick the first category in this game that actually has any guides yet,
+        // falling back to the first category at all if none do (still empty).
+        var expanded = categories.FirstOrDefault(cat => FactionsIn(g, cat).Count > 0, categories[0]);
+        _expandedCategory = expanded;
+
+        var faction = FactionsIn(g, expanded).FirstOrDefault();
+        if (faction is not null) SelectFaction(faction);
+    }
 
     private void ToggleCategory(GuideCategory cat)
     {
@@ -104,18 +187,20 @@ public partial class Guides
         }
 
         _expandedCategory = cat;
-        if (cat != GuideCategory.General && CategoryOf(_faction) != cat)
+        if (_faction.Game != _selectedGame || CategoryOf(_faction) != cat)
         {
-            SelectFaction(_factionsByCategory[cat][0]);
+            var faction = FactionsIn(_selectedGame, cat).FirstOrDefault();
+            if (faction is not null) SelectFaction(faction);
         }
     }
 
     private readonly List<FactionGuide> _factions;
-    private readonly Dictionary<GuideCategory, List<FactionGuide>> _factionsByCategory;
+    private readonly Dictionary<Game, Dictionary<GuideCategory, List<FactionGuide>>> _factionsByGameAndCategory;
 
-    public Guides()
-    {
-        _factions =
+    // The single source of truth for every faction/kill-team/gang/etc. guide in
+    // the app. Static (not tied to a live Guides page instance) so other pages
+    // can build the paint cross-reference index without instantiating Guides.
+    private static List<FactionGuide> BuildAllFactions() =>
         [
             BuildSororitas(),
             BuildSpaceMarines(),
@@ -143,10 +228,203 @@ public partial class Guides
             BuildWorldEaters(),
             BuildChaosDaemons(),
             BuildChaosKnights(),
+            BuildSkinToneGuide(),
+            BuildRocksWallsBuildingsGuide(),
+
+            // Age of Sigmar — Order
+            BuildStormcastEternals(),
+            BuildCitiesOfSigmar(),
+            BuildDaughtersOfKhaine(),
+            BuildIdonethDeepkin(),
+            BuildLuminethRealmLords(),
+            BuildFyreslayers(),
+            BuildKharadronOverlords(),
+            BuildSeraphon(),
+
+            // Age of Sigmar — Chaos
+            BuildSlavesToDarkness(),
+            BuildBladesOfKhorne(),
+            BuildDisciplesOfTzeentch(),
+            BuildMaggotkinOfNurgle(),
+            BuildHedonitesOfSlaanesh(),
+            BuildSkaven(),
+
+            // Age of Sigmar — Death
+            BuildNighthaunt(),
+            BuildOssiarchBonereapers(),
+            BuildSoulblightGravelords(),
+            BuildFleshEaterCourts(),
+
+            // Age of Sigmar — Destruction
+            BuildOrrukWarclans(),
+            BuildGloomspiteGitz(),
+            BuildOgorMawtribes(),
+            BuildSonsOfBehemat(),
+
+            // Kill Team
+            BuildKasrkin(),
+            BuildAngelsOfDeath(),
+            BuildHunterClade(),
+            BuildLegionary(),
+            BuildBlooded(),
+            BuildHierotekCircle(),
+            BuildKommandos(),
+            BuildWyrmblade(),
+            BuildCorsairVoidscarred(),
+
+            // Necromunda
+            BuildHouseEscher(),
+            BuildHouseGoliath(),
+            BuildHouseOrlock(),
+            BuildHouseVanSaar(),
+            BuildHouseCawdor(),
+            BuildHouseDelaque(),
+            BuildEnforcers(),
+            BuildNecromundaGenestealerCults(),
+            BuildChaosCult(),
+
+            // The Horus Heresy — Loyalist
+            BuildDarkAngelsLegion(),
+            BuildWhiteScarsLegion(),
+            BuildSpaceWolvesLegion(),
+            BuildImperialFistsLegion(),
+            BuildBloodAngelsLegion(),
+            BuildIronHandsLegion(),
+            BuildUltramarinesLegion(),
+            BuildSalamandersLegion(),
+            BuildRavenGuardLegion(),
+
+            // The Horus Heresy — Traitor
+            BuildEmperorsChildren(),
+            BuildIronWarriorsLegion(),
+            BuildNightLordsLegion(),
+            BuildWorldEatersLegion(),
+            BuildThousandSonsLegion(),
+            BuildSonsOfHorus(),
+            BuildWordBearers(),
+            BuildAlphaLegion(),
+            BuildDeathGuardLegion(),
+
+            // The Old World
+            BuildTheEmpire(),
+            BuildKingdomOfBretonnia(),
+            BuildOrcAndGoblinTribes(),
+            BuildTombKingsOfKhemri(),
+            BuildVampireCounts(),
+            BuildDwarfenMountainHolds(),
+            BuildWoodElfRealms(),
+            BuildHighElfRealms(),
+            BuildDarkElves(),
+
+            // Middle-earth
+            BuildGondor(),
+            BuildRohan(),
+            BuildRivendell(),
+            BuildDwarvesOfErebor(),
+            BuildMordor(),
+            BuildIsengard(),
+            BuildMoriaGoblins(),
+            BuildEasterlingsHarad(),
+
+            // Warcry
+            BuildUntamedBeasts(),
+            BuildIronGolems(),
+            BuildCypherLords(),
+            BuildSplinteredFang(),
+            BuildCorvusCabal(),
+            BuildSpireTyrants(),
+
+            // Warhammer Underworlds
+            BuildGrymwatch(),
+            BuildIronsoulsCondemnors(),
+            BuildMorgoksKrushas(),
+            BuildTheWurmspat(),
+            BuildZarbagsGitz(),
+            BuildSkittershanksClawpack(),
+
+            // Warhammer Quest: Darkwater
+            BuildHeroesOfDarkwater(),
+            BuildSkavenMarauders(),
+
+            // Blood Bowl
+            BuildHuman(),
+            BuildOrc(),
+            BuildDwarf(),
+            BuildBloodBowlSkaven(),
+            BuildChaosChosen(),
+            BuildUndead(),
+            BuildHighElf(),
+            BuildDarkElf(),
+            BuildNorse(),
+            BuildNurgle(),
+
+            // Adeptus Titanicus
+            BuildLegioFureansTitanicus(),
+            BuildLegioIgnatumTitanicus(),
+            BuildLegioAstorumTitanicus(),
+            BuildLegioMortisTitanicus(),
+            BuildLegioVulcanumTitanicus(),
+            BuildLegioAudaxTitanicus(),
+
+            // Legions Imperialis
+            BuildUltramarinesLegionsImperialis(),
+            BuildImperialFistsLegionsImperialis(),
+            BuildBloodAngelsLegionsImperialis(),
+            BuildSonsOfHorusLegionsImperialis(),
+            BuildDeathGuardLegionsImperialis(),
+            BuildWordBearersLegionsImperialis(),
         ];
-        _factionsByCategory = _factions.GroupBy(CategoryOf).ToDictionary(g => g.Key, g => g.ToList());
-        SelectFaction(_factions[0]);
+
+    public Guides()
+    {
+        _factions = BuildAllFactions();
+        _factionsByGameAndCategory = _factions
+            .GroupBy(f => f.Game)
+            .ToDictionary(gg => gg.Key, gg => gg.GroupBy(CategoryOf).ToDictionary(cg => cg.Key, cg => cg.ToList()));
+        SelectFaction(_factions.First(f => f.Category != GuideCategory.General));
+
+        var generalFaction = _factions.FirstOrDefault(f => f.Category == GuideCategory.General);
+        if (generalFaction is not null) SelectGeneralFaction(generalFaction);
     }
+
+    // ---- Paint "used in" cross-reference — built once, reused by All Paints /
+    // By Rack / Wish List to show which guides call for a given paint. Indexed
+    // per scheme and per unit's own extra Sections (not the full combined
+    // scheme+unit render), since that stays meaningful without combinatorial
+    // blowup across every scheme x unit combination.
+    internal record PaintUsage(Game Game, string FactionName, string UnitName);
+
+    private static Dictionary<string, List<PaintUsage>>? _paintUsageIndexCache;
+
+    internal static Dictionary<string, List<PaintUsage>> PaintUsageIndex
+    {
+        get
+        {
+            if (_paintUsageIndexCache is not null) return _paintUsageIndexCache;
+
+            var index = new Dictionary<string, List<PaintUsage>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var faction in BuildAllFactions())
+            {
+                foreach (var unit in faction.Units)
+                {
+                    var unitLabel = unit.IsScheme ? $"{unit.Name} (Colour Scheme)" : unit.Name;
+                    foreach (var step in unit.Sections.SelectMany(s => s.Steps))
+                    {
+                        if (!index.TryGetValue(step.Paint, out var uses))
+                            index[step.Paint] = uses = [];
+
+                        if (!uses.Any(u => u.Game == faction.Game && u.FactionName == faction.Name && u.UnitName == unitLabel))
+                            uses.Add(new PaintUsage(faction.Game, faction.Name, unitLabel));
+                    }
+                }
+            }
+            _paintUsageIndexCache = index;
+            return index;
+        }
+    }
+
+    internal static List<PaintUsage> WhereUsed(string paintName) =>
+        PaintUsageIndex.TryGetValue(paintName, out var uses) ? uses : [];
 
     protected override async Task OnInitializedAsync()
     {

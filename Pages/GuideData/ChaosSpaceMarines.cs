@@ -199,5 +199,5 @@ public partial class Guides
         PlainUnit(ChaosSpaceMarinesOverall, "Chaos Rhino"),
 
         PlainUnit(ChaosSpaceMarinesOverall, "Noctilith Crown"),
-    ]);
+    ], Category: GuideCategory.Chaos);
 }

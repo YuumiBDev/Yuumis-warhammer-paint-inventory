@@ -431,7 +431,8 @@ public static class PaintDatabase
             int rackNumber = 0, row = 0, col = 0;
 
             // Sprays are cans, not pots — they don't get a rack slot at all.
-            if (category != PaintCategory.Spray)
+            // Neither does anything else if you don't use racks at all.
+            if (category != PaintCategory.Spray && rackSettings.HasRacks)
             {
                 int rackIndex = slotIndex / slotsPerRack;
                 int posInRack = slotIndex % slotsPerRack;

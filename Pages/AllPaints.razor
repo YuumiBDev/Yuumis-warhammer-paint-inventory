@@ -54,7 +54,14 @@ else
                            @onchange="e => ToggleOwned(p, (bool)e.Value!)" />
                 </span>
                 <span class="cat-badge" style="background:@p.CategoryCssColor; color:@p.CategoryTextColor">@p.Category</span>
-                <span class="paint-name">@p.DisplayName</span>
+                <span class="paint-name">
+                    @p.DisplayName
+                    @{ var usedIn = Guides.WhereUsed(p.Name); }
+                    @if (usedIn.Count > 0)
+                    {
+                        <span class="used-in-badge" title="@UsedInTooltip(usedIn)">@usedIn.Count</span>
+                    }
+                </span>
                 <span class="paint-location loc-full">@(p.RackNumber == 0 ? "Not racked" : $"R{p.RackNumber} Row {p.Row} Col {p.Column}")</span>
                 <span class="paint-location loc-short">@(p.RackNumber == 0 ? "—" : $"{p.RackNumber}:{p.Row}:{p.Column}")</span>
                 <span class="qty-stepper">
@@ -155,4 +162,7 @@ else
         PaintCategory.Dry => "#1a1a1a",
         _                 => "#ffffff"
     };
+
+    private static string UsedInTooltip(List<Guides.PaintUsage> uses) =>
+        "Used in:\n" + string.Join("\n", uses.Select(u => $"{Guides.GameLabel(u.Game)} — {u.FactionName} — {u.UnitName}"));
 }

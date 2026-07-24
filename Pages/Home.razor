@@ -57,17 +57,20 @@ else
         }
     </div>
 
-    <div class="rack-info">
-        <span>Rack slots used: @_total / @_rackCapacity</span>
-        @if (_total > _rackCapacity)
-        {
-            <span class="missing-badge">(@(_total - _rackCapacity) over capacity)</span>
-        }
-        else
-        {
-            <span class="muted">(@(_rackCapacity - _total) empty)</span>
-        }
-    </div>
+    @if (Manager.RackSettings.HasRacks)
+    {
+        <div class="rack-info">
+            <span>Rack slots used: @_total / @_rackCapacity</span>
+            @if (_total > _rackCapacity)
+            {
+                <span class="missing-badge">(@(_total - _rackCapacity) over capacity)</span>
+            }
+            else
+            {
+                <span class="muted">(@(_rackCapacity - _total) empty)</span>
+            }
+        </div>
+    }
 }
 
 @code {

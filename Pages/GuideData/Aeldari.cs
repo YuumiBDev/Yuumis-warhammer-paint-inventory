@@ -237,5 +237,5 @@ public partial class Guides
 
         PlainUnit(AeldariOverall, "Wave Serpent"),
         PlainUnit(AeldariOverall, "Starweaver"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

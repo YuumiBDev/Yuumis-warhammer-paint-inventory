@@ -72,5 +72,5 @@ public partial class Guides
         PlainUnit(ThousandSonsOverall, "Mutalith Vortex Beast"),
 
         PlainUnit(ThousandSonsOverall, "Chaos Rhino"),
-    ]);
+    ], Category: GuideCategory.Chaos);
 }

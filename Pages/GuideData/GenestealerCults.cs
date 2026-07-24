@@ -64,5 +64,5 @@ public partial class Guides
         PlainUnit(GenestealerCultsOverall, "Goliath Rockgrinder"),
 
         PlainUnit(GenestealerCultsOverall, "Goliath Truck"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

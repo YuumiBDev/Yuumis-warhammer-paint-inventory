@@ -255,7 +255,7 @@ public partial class Guides
             new("Hull Panels", "Corax White", "as Overall armour scheme"),
             new("Tracks", "Abaddon Black", "Administratum Grey drybrush"),
         ]),
-    ],
+    ], Sources:
     [
         new("Official (Games Workshop)",
         [

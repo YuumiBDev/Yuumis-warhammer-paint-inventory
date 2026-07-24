@@ -59,5 +59,5 @@ public partial class Guides
 
         PlainUnit(LeaguesOfVotannOverall, "Kapricus Carrier"),
         PlainUnit(LeaguesOfVotannOverall, "Sagitaur"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

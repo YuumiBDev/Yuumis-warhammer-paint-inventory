@@ -68,5 +68,5 @@ public partial class Guides
         PlainUnit(WorldEatersOverall, "Maulerfiend"),
 
         PlainUnit(WorldEatersOverall, "Chaos Rhino"),
-    ]);
+    ], Category: GuideCategory.Chaos);
 }

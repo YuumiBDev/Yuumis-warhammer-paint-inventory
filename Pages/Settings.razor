@@ -41,17 +41,27 @@ else
 
     <div class="settings-data-section">
         <div class="settings-data-group">
-            <span class="settings-data-label">Rows per rack</span>
-            <input class="rack-settings-input" type="number" min="1" @bind="_rackRows" />
+            <label class="cat-toggle">
+                <input type="checkbox" checked="@_hasRacks" @onchange="e => _hasRacks = (bool)e.Value!" />
+            </label>
+            <span class="settings-data-label">I have racks</span>
         </div>
-        <div class="settings-data-group">
-            <span class="settings-data-label">Columns per rack</span>
-            <input class="rack-settings-input" type="number" min="1" @bind="_rackColumns" />
-        </div>
-        <div class="settings-data-group">
-            <span class="settings-data-label">Racks I own</span>
-            <input class="rack-settings-input" type="number" min="0" placeholder="unset" @bind="_racksOwned" />
-        </div>
+
+        @if (_hasRacks)
+        {
+            <div class="settings-data-group">
+                <span class="settings-data-label">Rows per rack</span>
+                <input class="rack-settings-input" type="number" min="1" @bind="_rackRows" />
+            </div>
+            <div class="settings-data-group">
+                <span class="settings-data-label">Columns per rack</span>
+                <input class="rack-settings-input" type="number" min="1" @bind="_rackColumns" />
+            </div>
+            <div class="settings-data-group">
+                <span class="settings-data-label">Racks I own</span>
+                <input class="rack-settings-input" type="number" min="0" placeholder="unset" @bind="_racksOwned" />
+            </div>
+        }
         <button class="btn-copy btn-secondary" @onclick="SaveRackSettings">Save</button>
         @if (_rackSettingsMessage is not null)
         {
@@ -85,6 +95,7 @@ else
     private List<CategorySetting> _orderedSettings = [];
     private string? _importMessage;
 
+    private bool _hasRacks;
     private int _rackRows;
     private int _rackColumns;
     private int? _racksOwned;
@@ -94,6 +105,7 @@ else
     {
         await Manager.InitializeAsync();
         RefreshSettings();
+        _hasRacks = Manager.RackSettings.HasRacks;
         _rackRows = Manager.RackSettings.RowsPerRack;
         _rackColumns = Manager.RackSettings.ColumnsPerRack;
         _racksOwned = Manager.RackSettings.RacksOwned;
@@ -102,13 +114,13 @@ else
 
     private async Task SaveRackSettings()
     {
-        if (_rackRows < 1 || _rackColumns < 1)
+        if (_hasRacks && (_rackRows < 1 || _rackColumns < 1))
         {
             _rackSettingsMessage = "Rows and columns must be at least 1.";
             return;
         }
 
-        var ok = await Manager.SetRackSettingsAsync(_rackRows, _rackColumns, _racksOwned);
+        var ok = await Manager.SetRackSettingsAsync(_hasRacks, _rackRows, _rackColumns, _racksOwned);
         _rackSettingsMessage = ok ? "Saved." : "Failed to save — try again.";
     }
 

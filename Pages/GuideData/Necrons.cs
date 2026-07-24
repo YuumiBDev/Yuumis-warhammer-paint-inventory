@@ -116,6 +116,52 @@ public partial class Guides
         new("Mephrit Dynasty", "One of the major Necron Dynasties — copper/bronze body, orange-red glowing details. Masters of siege warfare and irradiated weaponry.", DynastyMephrit, IsScheme: true),
         new("Nephrekh Dynasty", "One of the major Necron Dynasties — chrome silver body, blue glowing details. Masters of teleportation and swift strikes.", DynastyNephrekh, IsScheme: true),
 
+        new("C'tan Shard of the Nightbringer", "One of the most iconic centrepiece models in the Necron range — a C'tan Shard with its own unique living-metal and shadow-cloak scheme, distinct from any Dynasty colours. Paint the green OSL last: thin glazes bleeding onto nearby cloak edges and the base tie the whole model together. Layer greens thinly for a smoother glow, and drybrush the Runefang Steel boldly so the body reads almost mirror-bright against the dark cloak.",
+        [
+            new("Necrodermis Body (Living Metal)",
+            [
+                new("Basecoat", "Leadbelcher"),
+                new("Drybrush", "Runefang Steel", "build up a strong shine"),
+                new("Recess Shade", "Nuln Oil"),
+                new("Glaze", "Aethermatic Blue", "or Nighthaunt Gloom, thinned with Lahmian Medium"),
+                new("Edge Highlight", "Stormhost Silver"),
+            ]),
+            new("Dark Robes & Cloak",
+            [
+                new("Base", "Abaddon Black"),
+                new("Mid Highlight", "Skavenblight Dinge"),
+                new("Upper Highlight", "Stormvermin Fur"),
+                new("Purple OSL", "Xereus Purple", "thinned glaze near energy zones"),
+            ]),
+            new("Glowing Green Energy (Cloak Fragments & Scarabs)",
+            [
+                new("Base", "Caliban Green"),
+                new("Layer", "Warpstone Glow"),
+                new("Highlight", "Moot Green"),
+                new("Brightest Glow Tips", "Yriel Yellow", "or Flash Gitz Yellow"),
+                new("Scarabs", "Kabalite Green", "→ Sybarite Green → White Scar reflection dot"),
+                new("Base Vines / Tendrils", "Moot Green", "drybrushed over Abaddon Black"),
+            ]),
+            new("The Scythe",
+            [
+                new("Base", "Incubi Darkness"),
+                new("Highlight", "Kabalite Green", "→ Sybarite Green"),
+                new("Edge Gleam", "White Scar", "or Stormhost Silver along the blade"),
+            ]),
+            new("Face & Skull",
+            [
+                new("Base", "Abaddon Black"),
+                new("Highlight", "The Fang", "→ Fenrisian Grey"),
+                new("Glowing Eyes", "Moot Green", "base; Yriel Yellow centre; thinned Warpstone Glow glazed outward"),
+            ]),
+            new("Base / Rims",
+            [
+                new("Texture", "Astrogranite Debris", "or Armageddon Dust"),
+                new("Drybrush", "Mechanicus Standard Grey", "→ Administratum Grey"),
+                new("Skulls", "Zandri Dust", "→ Screaming Skull"),
+            ]),
+        ]),
+
         FactionUnit(NecronsOverall, "Warriors", "Unit-Specific Details",
         [
             new("Gauss Flayer Barrel", "Leadbelcher"),
@@ -184,5 +230,5 @@ public partial class Guides
             new("Portal Glow", "Moot Green", "larger glaze area"),
             new("Hull Trim", "Stormhost Silver"),
         ]),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

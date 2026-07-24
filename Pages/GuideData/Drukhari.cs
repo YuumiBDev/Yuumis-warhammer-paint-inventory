@@ -69,5 +69,5 @@ public partial class Guides
 
         PlainUnit(DrukhariOverall, "Raider"),
         PlainUnit(DrukhariOverall, "Venom"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

@@ -13,60 +13,72 @@ else
         <h1>BY RACK</h1>
     </div>
 
-    <div class="rack-tabs">
-        @for (int r = 1; r <= _maxRack; r++)
-        {
-            int rack = r;
-            <button class="tab @(_rack == rack ? "active" : "")" @onclick="() => _rack = rack">
-                Rack @rack
-            </button>
-        }
-    </div>
-
-    <div class="rack-legend">
-        @foreach (var cat in OrderedCategories)
-        {
-            var p = new Paint { Category = cat };
-            <span class="cat-badge" style="background:@p.CategoryCssColor; color:@p.CategoryTextColor">@cat</span>
-        }
-    </div>
-
-    <div class="rack-grid">
-        @{
-            var grid = Manager.GetByRack(_rack).ToDictionary(p => (p.Row, p.Column));
-        }
-        <div class="rack-col-headers">
-            <div class="rack-row-label"></div>
-            @for (int c = 1; c <= Manager.RackSettings.ColumnsPerRack; c++)
+    @if (!Manager.RackSettings.HasRacks)
+    {
+        <p class="subtitle">You've told Settings you don't use racks, so no paint has a rack location. Turn "I have racks" back on in Settings if that changes.</p>
+    }
+    else
+    {
+        <div class="rack-tabs">
+            @for (int r = 1; r <= _maxRack; r++)
             {
-                <div class="rack-col-header">Col @c</div>
+                int rack = r;
+                <button class="tab @(_rack == rack ? "active" : "")" @onclick="() => _rack = rack">
+                    Rack @rack
+                </button>
             }
         </div>
-        @for (int row = 1; row <= Manager.RackSettings.RowsPerRack; row++)
-        {
-            int r2 = row;
-            <div class="rack-row">
-                <div class="rack-row-label">Row @row</div>
-                @for (int col = 1; col <= Manager.RackSettings.ColumnsPerRack; col++)
+
+        <div class="rack-legend">
+            @foreach (var cat in OrderedCategories)
+            {
+                var p = new Paint { Category = cat };
+                <span class="cat-badge" style="background:@p.CategoryCssColor; color:@p.CategoryTextColor">@cat</span>
+            }
+        </div>
+
+        <div class="rack-grid">
+            @{
+                var grid = Manager.GetByRack(_rack).ToDictionary(p => (p.Row, p.Column));
+            }
+            <div class="rack-col-headers">
+                <div class="rack-row-label"></div>
+                @for (int c = 1; c <= Manager.RackSettings.ColumnsPerRack; c++)
                 {
-                    int c2 = col;
-                    if (grid.TryGetValue((r2, c2), out var paint))
-                    {
-                        <div class="rack-cell @(paint.IsOwned ? "cell-owned" : "cell-missing")"
-                             style="border-left: 4px solid @paint.CategoryCssColor"
-                             @onclick="() => ToggleOwned(paint)">
-                            <span class="cell-check">@(paint.IsOwned ? "✓" : "○")</span>
-                            <span class="cell-name">@paint.DisplayName</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rack-cell cell-empty">—</div>
-                    }
+                    <div class="rack-col-header">Col @c</div>
                 }
             </div>
-        }
-    </div>
+            @for (int row = 1; row <= Manager.RackSettings.RowsPerRack; row++)
+            {
+                int r2 = row;
+                <div class="rack-row">
+                    <div class="rack-row-label">Row @row</div>
+                    @for (int col = 1; col <= Manager.RackSettings.ColumnsPerRack; col++)
+                    {
+                        int c2 = col;
+                        if (grid.TryGetValue((r2, c2), out var paint))
+                        {
+                            var usedIn = Guides.WhereUsed(paint.Name);
+                            var tooltip = usedIn.Count > 0
+                                ? $"{paint.DisplayName}\nUsed in:\n" + string.Join("\n", usedIn.Select(u => $"{Guides.GameLabel(u.Game)} — {u.FactionName} — {u.UnitName}"))
+                                : paint.DisplayName;
+                            <div class="rack-cell @(paint.IsOwned ? "cell-owned" : "cell-missing")"
+                                 style="border-left: 4px solid @paint.CategoryCssColor"
+                                 title="@tooltip"
+                                 @onclick="() => ToggleOwned(paint)">
+                                <span class="cell-check">@(paint.IsOwned ? "✓" : "○")</span>
+                                <span class="cell-name">@paint.DisplayName</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rack-cell cell-empty">—</div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    }
 }
 
 @code {

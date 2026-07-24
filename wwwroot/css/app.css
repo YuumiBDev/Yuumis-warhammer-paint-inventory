@@ -372,6 +372,17 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.1rem; color: #aaa; letter-spacing: 1p
 .paint-name { font-size: 0.9rem; }
 .paint-location { color: #666; font-size: 0.8rem; font-family: monospace; }
 
+.used-in-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0 0.35rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    color: #888;
+    font-size: 0.7rem;
+    cursor: help;
+}
+
 .owned-toggle { display: flex; justify-content: center; }
 .owned-toggle input[type=checkbox] {
     width: 16px; height: 16px; cursor: pointer; accent-color: #27ae60;
@@ -550,6 +561,8 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.1rem; color: #aaa; letter-spacing: 1p
 
 .rack-grid {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 300px; /* roughly 6 rows tall — scrolls instead of growing the page beyond that */
     -webkit-overflow-scrolling: touch;
 }
 
@@ -559,6 +572,10 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.1rem; color: #aaa; letter-spacing: 1p
     gap: 4px;
     margin-bottom: 2px;
     min-width: max-content;
+    position: sticky;
+    top: 0;
+    background: #121212;
+    z-index: 1;
 }
 
 .rack-col-header {
@@ -651,6 +668,15 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.1rem; color: #aaa; letter-spacing: 1p
     color: #ccc;
 }
 
+.wish-item-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+
+.wish-used-in {
+    color: #666;
+    font-size: 0.75rem;
+    font-style: italic;
+    padding-bottom: 0.2rem;
+}
+
 .copy-confirm {
     background: #1a2e1a;
     border: 1px solid #27ae60;
@@ -723,7 +749,7 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.1rem; color: #aaa; letter-spacing: 1p
 
 .guide-accordion { display: flex; flex-direction: column; gap: 0.5rem; max-width: 900px; }
 
-.category-accordion { max-width: none; }
+.category-accordion { max-width: none; margin-bottom: 1rem; }
 .category-accordion > .guide-accordion-item > .guide-accordion-header {
     font-size: 1.05rem;
     font-weight: 700;

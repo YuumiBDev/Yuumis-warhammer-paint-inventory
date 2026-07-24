@@ -63,5 +63,5 @@ public partial class Guides
         PlainUnit(ChaosKnightsOverall, "War Dog Moirax"),
         PlainUnit(ChaosKnightsOverall, "Chaos Acastus Knight Asterius"),
         PlainUnit(ChaosKnightsOverall, "Chaos Acastus Knight Porphyrion"),
-    ]);
+    ], Category: GuideCategory.Chaos);
 }

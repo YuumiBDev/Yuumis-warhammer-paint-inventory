@@ -114,5 +114,5 @@ public partial class Guides
 
         PlainUnit(ChaosDaemonsOverall, "Feculent Gnarlmaw"),
         PlainUnit(ChaosDaemonsOverall, "Skull Altar"),
-    ]);
+    ], Category: GuideCategory.Chaos);
 }

@@ -75,5 +75,5 @@ public partial class Guides
         PlainUnit(DeathGuardOverall, "Chaos Rhino"),
 
         PlainUnit(DeathGuardOverall, "Miasmic Malignifier"),
-    ]);
+    ], Category: GuideCategory.Chaos);
 }

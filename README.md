@@ -25,12 +25,7 @@ This is a standalone fork with no login wall or third-party auth service baked i
 ## Quick Start
 
 1. **Create a Supabase project** (free tier) — [supabase.com](https://supabase.com).
-2. **Run the SQL files** at the repo root, in the SQL Editor, **in this order**:
-   1. `master_paint_list_backup.sql` — creates and seeds the 337-paint master list.
-   2. `schema_owned_wishlist_categories.sql` — creates owned/wishlist/category-settings tables.
-   3. `migration_rack_settings.sql` — creates the rack-layout settings table.
-   4. `create_paint_equivalents.sql` — creates the equivalents table + seed data (Vallejo, AK Interactive).
-   5. *(optional)* `add_army_painter_equivalents.sql`, then `add_p3_and_more_equivalents.sql` — more brands.
+2. **Run `schema.sql`** (repo root) in the Supabase SQL Editor — one file, idempotent, creates and seeds everything: the 337-paint master list, owned/wishlist/category-settings, rack layout settings, and 3rd-party paint equivalents (Vallejo, AK Interactive, Army Painter, P3 Formula).
 3. **Grab your Supabase URL and anon key**: Project Settings → API.
 4. **Create a Cloudflare Pages project** — connect this repo, or deploy via the included GitHub Actions workflow (see Deployment below).
 5. **Set two environment variables** on the Cloudflare Pages project (Settings → Environment variables):
@@ -198,27 +193,13 @@ If you want per-user data instead of a single shared inventory, that's a bigger 
 
 ---
 
-## Desktop Apps
+## Desktop Apps (Optional)
 
-Both the console app (`WarhamerPaintInventory`) and GUI app (`WarhamerPaintInventoryGUI`) sync with the same Supabase database. They call Supabase directly (not through the Cloudflare Function), so they need their own `SUPABASE_URL`/anon key configuration — check each app's config before running.
-
-**On startup:** loads local `inventory.json` first (works offline), then fetches latest owned status from Supabase and updates the local file.
-
-**On toggle:** saves to local file immediately, then syncs to Supabase in the background.
-
-`IsWishListed` (GUI only) is stored locally and is not synced to Supabase.
-
-### Building Desktop Apps
-
-```bash
-# Console
-cd WarhamerPaintInventory
-dotnet publish -c Release -r win-x64 --self-contained false
-
-# GUI
-cd WarhamerPaintInventoryGUI
-dotnet publish -c Release -r win-x64 --self-contained false
-```
+> **Not included in this repository.** If you want a Windows console/GUI companion app, you'd build your own console (.NET 8) and/or WPF (.NET 10) app that talks to the same Supabase project directly (not through the Cloudflare Function), with its own `SUPABASE_URL`/anon key configuration. A reasonable design, based on the original project this was forked from:
+>
+> - **On startup:** load a local `inventory.json` first (works offline), then fetch latest owned status from Supabase and update the local file.
+> - **On toggle:** save to the local file immediately, then sync to Supabase in the background.
+> - A wishlist flag can be kept local-only if you don't want it synced.
 
 ---
 

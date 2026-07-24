@@ -159,5 +159,5 @@ public partial class Guides
         PlainUnit(TyranidsOverall, "Trygon"),
         PlainUnit(TyranidsOverall, "Hive Crone"),
         PlainUnit(TyranidsOverall, "Harpy"),
-    ]);
+    ], Category: GuideCategory.Xenos);
 }

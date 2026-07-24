@@ -70,11 +70,12 @@ public class InventoryManager
         try
         {
             var rackRows = await _http.GetFromJsonAsync<List<RackSettingsRow>>(
-                $"{RackSettingsPath}?select=rows_per_rack,columns_per_rack,racks_owned&id=eq.1");
+                $"{RackSettingsPath}?select=has_racks,rows_per_rack,columns_per_rack,racks_owned&id=eq.1");
             var rackRow = rackRows?.FirstOrDefault();
             if (rackRow != null)
                 _rackSettings = new RackSettings
                 {
+                    HasRacks = rackRow.HasRacks,
                     RowsPerRack = rackRow.RowsPerRack,
                     ColumnsPerRack = rackRow.ColumnsPerRack,
                     RacksOwned = rackRow.RacksOwned
@@ -310,17 +311,19 @@ public class InventoryManager
         }
     }
 
-    /// Persists rack rows/columns and how many racks you own, then recomputes
-    /// rack locations to match (packing planner).
-    public async Task<bool> SetRackSettingsAsync(int rowsPerRack, int columnsPerRack, int? racksOwned)
+    /// Persists whether you use racks, rack rows/columns, and how many racks you
+    /// own, then recomputes rack locations to match (packing planner).
+    public async Task<bool> SetRackSettingsAsync(bool hasRacks, int rowsPerRack, int columnsPerRack, int? racksOwned)
     {
         var previous = new RackSettings
         {
+            HasRacks = _rackSettings.HasRacks,
             RowsPerRack = _rackSettings.RowsPerRack,
             ColumnsPerRack = _rackSettings.ColumnsPerRack,
             RacksOwned = _rackSettings.RacksOwned
         };
 
+        _rackSettings.HasRacks = hasRacks;
         _rackSettings.RowsPerRack = rowsPerRack;
         _rackSettings.ColumnsPerRack = columnsPerRack;
         _rackSettings.RacksOwned = racksOwned;
@@ -329,7 +332,7 @@ public class InventoryManager
         {
             var request = new HttpRequestMessage(HttpMethod.Post, RackSettingsPath);
             request.Headers.Add("Prefer", "resolution=merge-duplicates");
-            request.Content = JsonContent.Create(new RackSettingsUpsertRow(1, rowsPerRack, columnsPerRack, racksOwned));
+            request.Content = JsonContent.Create(new RackSettingsUpsertRow(1, hasRacks, rowsPerRack, columnsPerRack, racksOwned));
             var response = await _http.SendAsync(request);
             response.EnsureSuccessStatusCode();
             RebuildPaintList();
@@ -602,12 +605,14 @@ public class InventoryManager
         [property: JsonPropertyName("sort_order")] int SortOrder);
 
     private record RackSettingsRow(
+        [property: JsonPropertyName("has_racks")] bool HasRacks,
         [property: JsonPropertyName("rows_per_rack")] int RowsPerRack,
         [property: JsonPropertyName("columns_per_rack")] int ColumnsPerRack,
         [property: JsonPropertyName("racks_owned")] int? RacksOwned);
 
     private record RackSettingsUpsertRow(
         [property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("has_racks")] bool HasRacks,
         [property: JsonPropertyName("rows_per_rack")] int RowsPerRack,
         [property: JsonPropertyName("columns_per_rack")] int ColumnsPerRack,
         [property: JsonPropertyName("racks_owned")] int? RacksOwned);
