@@ -258,7 +258,7 @@ public static class PaintDatabase
         ("Dry: Nurgling Green",  PaintCategory.Dry),
 
         // ── TECHNICAL (21) ───────────────────────────────────────────────────────
-        ("'Ardcoat",                 PaintCategory.Technical),
+        ("Ardcoat",                  PaintCategory.Technical),
         ("Agrellan Badland",         PaintCategory.Technical),
         ("Agrellan Earth",           PaintCategory.Technical),
         ("Armageddon Dust",          PaintCategory.Technical),

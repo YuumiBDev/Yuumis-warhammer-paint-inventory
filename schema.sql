@@ -290,7 +290,7 @@ insert into public.warhammer_paint_master (name, type) values
   ('Dry: Dawnstone', 'Dry'),
   ('Dry: Hoeth Blue', 'Dry'),
   ('Dry: Nurgling Green', 'Dry'),
-  ('''Ardcoat', 'Technical'),
+  ('Ardcoat', 'Technical'),
   ('Agrellan Badland', 'Technical'),
   ('Agrellan Earth', 'Technical'),
   ('Armageddon Dust', 'Technical'),
