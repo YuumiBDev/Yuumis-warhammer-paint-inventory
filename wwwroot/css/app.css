@@ -562,7 +562,8 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.1rem; color: #aaa; letter-spacing: 1p
 .rack-grid {
     overflow-x: auto;
     overflow-y: auto;
-    max-height: 300px; /* roughly 6 rows tall — scrolls instead of growing the page beyond that */
+    max-height: calc(100vh - 320px); /* fill remaining viewport height, then scroll */
+    min-height: 200px;
     -webkit-overflow-scrolling: touch;
 }
 
