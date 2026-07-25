@@ -21,7 +21,18 @@ jobs:
       - name: Publish
         run: dotnet publish -c Release -o release
 
+      - name: Check Cloudflare secrets are configured
+        id: check-secrets
+        run: |
+          if [ -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] && [ -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Cloudflare Pages deploy — CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID repo secrets aren't set yet. See README.md > Deployment to set them up."
+          fi
+
       - name: Deploy to Cloudflare Pages
+        if: steps.check-secrets.outputs.configured == 'true'
         run: npx wrangler pages deploy release/wwwroot --project-name=warhammer-paint-inventory --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

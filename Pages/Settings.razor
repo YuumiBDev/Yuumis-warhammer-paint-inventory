@@ -69,6 +69,21 @@ else
         }
     </div>
 
+    <h2 class="section-title">Home Link</h2>
+    <p class="subtitle">Optional link shown at the top of the sidebar. Leave it blank to hide it.</p>
+
+    <div class="settings-data-section">
+        <div class="settings-data-group">
+            <span class="settings-data-label">Home URL</span>
+            <input class="rack-settings-input" style="width:260px" type="text" placeholder="https://… (leave blank to disable)" @bind="_homeLinkUrl" />
+        </div>
+        <button class="btn-copy btn-secondary" @onclick="SaveHomeLinkUrl">Save</button>
+        @if (_homeLinkMessage is not null)
+        {
+            <span class="import-status">@_homeLinkMessage</span>
+        }
+    </div>
+
     <h2 class="section-title">Data</h2>
 
     <div class="settings-data-section">
@@ -101,6 +116,9 @@ else
     private int? _racksOwned;
     private string? _rackSettingsMessage;
 
+    private string? _homeLinkUrl;
+    private string? _homeLinkMessage;
+
     protected override async Task OnInitializedAsync()
     {
         await Manager.InitializeAsync();
@@ -109,6 +127,7 @@ else
         _rackRows = Manager.RackSettings.RowsPerRack;
         _rackColumns = Manager.RackSettings.ColumnsPerRack;
         _racksOwned = Manager.RackSettings.RacksOwned;
+        _homeLinkUrl = Manager.AppSettings.HomeLinkUrl;
         _loaded = true;
     }
 
@@ -122,6 +141,13 @@ else
 
         var ok = await Manager.SetRackSettingsAsync(_hasRacks, _rackRows, _rackColumns, _racksOwned);
         _rackSettingsMessage = ok ? "Saved." : "Failed to save — try again.";
+    }
+
+    private async Task SaveHomeLinkUrl()
+    {
+        var url = string.IsNullOrWhiteSpace(_homeLinkUrl) ? null : _homeLinkUrl.Trim();
+        var ok = await Manager.SetHomeLinkUrlAsync(url);
+        _homeLinkMessage = ok ? "Saved." : "Failed to save — try again.";
     }
 
     private void RefreshSettings() =>

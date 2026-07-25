@@ -10,11 +10,13 @@ public class InventoryManager
     private const string WishlistPath    = "/rest/v1/warhammer_wishlist_paints";
     private const string SettingsPath    = "/rest/v1/warhammer_category_settings";
     private const string RackSettingsPath = "/rest/v1/warhammer_rack_settings";
+    private const string AppSettingsPath = "/rest/v1/warhammer_app_settings";
     private const string EquivalentsPath = "/rest/v1/warhammer_paint_equivalents";
 
     private List<Paint> _paints = [];
     private List<CategorySetting> _categorySettings = PaintDatabase.DefaultCategorySettings();
     private RackSettings _rackSettings = new();
+    private AppSettings _appSettings = new();
 
     // Null until a successful fetch of warhammer_paint_master; if it stays null,
     // the app is running on the hardcoded fallback list (Supabase unreachable).
@@ -26,6 +28,7 @@ public class InventoryManager
     public IReadOnlyList<Paint> Paints => _paints;
     public IReadOnlyList<CategorySetting> CategorySettings => _categorySettings;
     public RackSettings RackSettings => _rackSettings;
+    public AppSettings AppSettings => _appSettings;
     public bool IsUsingFallbackList => _masterRows == null;
 
     /// How many racks the current paint count actually occupies (ignores RacksOwned).
@@ -82,6 +85,16 @@ public class InventoryManager
                 };
         }
         catch { _rackSettings = new RackSettings(); }
+
+        try
+        {
+            var appRows = await _http.GetFromJsonAsync<List<AppSettingsRow>>(
+                $"{AppSettingsPath}?select=home_link_url&id=eq.1");
+            var appRow = appRows?.FirstOrDefault();
+            if (appRow != null)
+                _appSettings = new AppSettings { HomeLinkUrl = appRow.HomeLinkUrl };
+        }
+        catch { _appSettings = new AppSettings(); }
 
         try
         {
@@ -341,6 +354,28 @@ public class InventoryManager
         catch
         {
             _rackSettings = previous;
+            return false;
+        }
+    }
+
+    /// Persists the optional sidebar "Home" link. Null/empty hides it.
+    public async Task<bool> SetHomeLinkUrlAsync(string? homeLinkUrl)
+    {
+        var previous = _appSettings.HomeLinkUrl;
+        _appSettings.HomeLinkUrl = homeLinkUrl;
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, AppSettingsPath);
+            request.Headers.Add("Prefer", "resolution=merge-duplicates");
+            request.Content = JsonContent.Create(new AppSettingsUpsertRow(1, homeLinkUrl));
+            var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return true;
+        }
+        catch
+        {
+            _appSettings.HomeLinkUrl = previous;
             return false;
         }
     }
@@ -616,4 +651,11 @@ public class InventoryManager
         [property: JsonPropertyName("rows_per_rack")] int RowsPerRack,
         [property: JsonPropertyName("columns_per_rack")] int ColumnsPerRack,
         [property: JsonPropertyName("racks_owned")] int? RacksOwned);
+
+    private record AppSettingsRow(
+        [property: JsonPropertyName("home_link_url")] string? HomeLinkUrl);
+
+    private record AppSettingsUpsertRow(
+        [property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("home_link_url")] string? HomeLinkUrl);
 }

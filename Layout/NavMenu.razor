@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Routing
+@inject InventoryManager Manager
 
 @if (_open)
 {
@@ -12,6 +13,12 @@
             <span></span><span></span><span></span>
         </button>
     </div>
+    @if (!string.IsNullOrEmpty(Manager.AppSettings.HomeLinkUrl))
+    {
+        <div style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+            <a href="@Manager.AppSettings.HomeLinkUrl" target="_blank" rel="noopener" style="display:block;text-align:center;padding:5px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:0.72rem;text-decoration:none;">&#8962; Home</a>
+        </div>
+    }
     <nav class="flex-column @(_open ? "nav-open" : "")">
         <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="Close">Dashboard</NavLink>
         <NavLink class="nav-link" href="all-paints" @onclick="Close">All Paints</NavLink>
@@ -27,4 +34,6 @@
     bool _open;
     void Toggle() => _open = !_open;
     void Close() => _open = false;
+
+    protected override async Task OnInitializedAsync() => await Manager.InitializeAsync();
 }

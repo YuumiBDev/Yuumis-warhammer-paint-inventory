@@ -1408,3 +1408,40 @@ from (values
 ) as v(citadel_name, equivalent_name)
 join public.warhammer_paint_master m on m.name = v.citadel_name
 on conflict (paint_id, brand, equivalent_name) do nothing;
+
+-- ============================================================
+-- PART 7: APP-LEVEL SETTINGS
+-- ============================================================
+
+-- Single-row settings table for misc app-wide options. Currently just the
+-- optional "Home" link shown in the sidebar (null/empty hides it).
+create table if not exists public.warhammer_app_settings (
+  id            int primary key default 1,
+  home_link_url text,
+  constraint warhammer_app_settings_singleton check (id = 1)
+);
+
+alter table public.warhammer_app_settings enable row level security;
+
+grant select, insert, update on public.warhammer_app_settings to anon;
+
+drop policy if exists "anon read app_settings"   on public.warhammer_app_settings;
+drop policy if exists "anon insert app_settings" on public.warhammer_app_settings;
+drop policy if exists "anon update app_settings" on public.warhammer_app_settings;
+
+create policy "anon read app_settings"
+  on public.warhammer_app_settings for select
+  to anon using (true);
+
+create policy "anon insert app_settings"
+  on public.warhammer_app_settings for insert
+  to anon with check (true);
+
+create policy "anon update app_settings"
+  on public.warhammer_app_settings for update
+  to anon using (true) with check (true);
+
+-- Seed the single row (unset by default).
+insert into public.warhammer_app_settings (id, home_link_url)
+values (1, null)
+on conflict (id) do nothing;
