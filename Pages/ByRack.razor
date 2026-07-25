@@ -41,7 +41,7 @@ else
             @{
                 var grid = Manager.GetByRack(_rack).ToDictionary(p => (p.Row, p.Column));
             }
-            <div class="rack-col-headers">
+            <div class="rack-col-headers" style="grid-template-columns: 52px repeat(@Manager.RackSettings.ColumnsPerRack, minmax(110px, 1fr));">
                 <div class="rack-row-label"></div>
                 @for (int c = 1; c <= Manager.RackSettings.ColumnsPerRack; c++)
                 {
@@ -51,7 +51,7 @@ else
             @for (int row = 1; row <= Manager.RackSettings.RowsPerRack; row++)
             {
                 int r2 = row;
-                <div class="rack-row">
+                <div class="rack-row" style="grid-template-columns: 52px repeat(@Manager.RackSettings.ColumnsPerRack, minmax(110px, 1fr));">
                     <div class="rack-row-label">Row @row</div>
                     @for (int col = 1; col <= Manager.RackSettings.ColumnsPerRack; col++)
                     {
